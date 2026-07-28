@@ -16,3 +16,17 @@ def save_price(ticker, price, ts):
             text("INSERT INTO prices VALUES (:t, :p, :ts)"),
             {"t": ticker, "p": price, "ts": ts}
         )
+
+def get_latest_price(ticker):
+    """Return the most recent stored price for a ticker, or None if none exists."""
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("""
+                SELECT price FROM prices
+                WHERE ticker = :t
+                ORDER BY ts DESC
+                LIMIT 1
+            """),
+            {"t": ticker}
+        ).fetchone()
+    return result[0] if result else None

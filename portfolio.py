@@ -34,12 +34,21 @@ def compute_portfolio(holdings):
     }
 
 
-def compute_watchlist(watchlist, holdings):
-    """One row per watchlist stock. P&L filled in only for owned stocks."""
+def compute_watchlist(watchlist, holdings, price_fn=None):
+    """One row per watchlist stock. P&L filled in only for owned stocks.
+
+    price_fn lets the caller choose the price source. Defaults to the live
+    get_price, but is resolved at call time so tests can patch it.
+    """
+    if price_fn is None:
+        price_fn = get_price
+
     owned = {h["ticker"]: h for h in holdings}
     rows = []
     for ticker in watchlist:
-        current_price = get_price(ticker)
+        current_price = price_fn(ticker)
+        if current_price is None:
+            continue  # no price available, skip
         if ticker in owned:
             h = owned[ticker]
             cost_basis = h["quantity"] * h["buy_price"]

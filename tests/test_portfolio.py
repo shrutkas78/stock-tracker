@@ -72,3 +72,18 @@ def test_compute_watchlist_merges_holdings(mocker):
     assert hdfc["current_price"] == 1500.0
     assert hdfc["quantity"] is None
     assert hdfc["gain"] is None
+
+
+def test_compute_watchlist_custom_price_source():
+    # Pass an explicit price function instead of hitting the network
+    prices = {"RELIANCE.NS": 1280.0, "TCS.NS": 2300.0}
+    price_fn = lambda t: prices[t]
+
+    watchlist = ["RELIANCE.NS", "TCS.NS"]
+    holdings = [{"ticker": "RELIANCE.NS", "quantity": 10, "buy_price": 1200.0}]
+
+    rows = portfolio.compute_watchlist(watchlist, holdings, price_fn=price_fn)
+
+    reliance = next(r for r in rows if r["ticker"] == "RELIANCE.NS")
+    assert reliance["current_price"] == 1280.0
+    assert reliance["gain"] == 800.0
