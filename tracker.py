@@ -2,14 +2,16 @@ from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from fetch import get_price
 from db import init_db, save_price
-
-WATCHLIST = ["RELIANCE.NS", "TCS.NS", "INFY.NS"]
+from config import WATCHLIST
 
 def job():
     for t in WATCHLIST:
-        price = get_price(t)
-        save_price(t, price, datetime.now().isoformat())
-        print(f"Saved {t}: {price}")
+        try:
+            price = get_price(t)
+            save_price(t, price, datetime.now().isoformat())
+            print(f"Saved {t}: {price}")
+        except Exception as e:
+            print(f"Failed {t}: {e}")
 
 init_db()
 job()  # run once immediately

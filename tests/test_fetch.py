@@ -28,3 +28,21 @@ def test_get_price_uses_last_row(mocker):
     mocker.patch.object(fetch.yf, "Ticker", return_value=fake_ticker)
 
     assert fetch.get_price("SINGLE.NS") == 42.0
+
+
+def test_get_history_returns_rows(mocker):
+    import pandas as pd
+    from unittest.mock import MagicMock
+    # Fake 3 days of closes with a date index
+    idx = pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-03"])
+    fake_df = pd.DataFrame({"Close": [100.0, 102.0, 101.0]}, index=idx)
+    fake_ticker = MagicMock()
+    fake_ticker.history.return_value = fake_df
+    mocker.patch.object(fetch.yf, "Ticker", return_value=fake_ticker)
+
+    rows = fetch.get_history("FAKE.NS", period="1mo")
+
+    assert len(rows) == 3
+    assert rows[0]["price"] == 100.0
+    assert "ts" in rows[0]
+    fake_ticker.history.assert_called_once_with(period="1mo")

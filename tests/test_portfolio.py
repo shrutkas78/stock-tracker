@@ -37,3 +37,38 @@ def test_compute_portfolio_totals(mocker):
     assert summary["total_cost"] == 22000.0
     assert summary["total_value"] == 24300.0
     assert summary["total_gain"] == 2300.0
+
+
+def test_compute_pnl_includes_inputs(mocker):
+    mocker.patch("portfolio.get_price", return_value=1280.0)
+    result = portfolio.compute_pnl("RELIANCE.NS", quantity=10, buy_price=1200.0)
+    assert result["quantity"] == 10
+    assert result["buy_price"] == 1200.0
+
+
+def test_compute_watchlist_merges_holdings(mocker):
+    # Prices for RELIANCE, TCS, HDFCBANK in that order
+    mocker.patch("portfolio.get_price", side_effect=[1280.0, 2300.0, 1500.0])
+
+    watchlist = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"]
+    holdings = [
+        {"ticker": "RELIANCE.NS", "quantity": 10, "buy_price": 1200.0},
+        {"ticker": "TCS.NS",      "quantity": 5,  "buy_price": 2000.0},
+    ]
+
+    rows = portfolio.compute_watchlist(watchlist, holdings)
+
+    assert len(rows) == 3
+
+    # Owned stock: full P&L
+    reliance = next(r for r in rows if r["ticker"] == "RELIANCE.NS")
+    assert reliance["owned"] is True
+    assert reliance["quantity"] == 10
+    assert reliance["gain"] == 800.0
+
+    # Not owned: price present, P&L fields are None
+    hdfc = next(r for r in rows if r["ticker"] == "HDFCBANK.NS")
+    assert hdfc["owned"] is False
+    assert hdfc["current_price"] == 1500.0
+    assert hdfc["quantity"] is None
+    assert hdfc["gain"] is None
