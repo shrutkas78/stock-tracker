@@ -20,6 +20,7 @@ def save_price(ticker, price, ts):
 
 def get_latest_price(ticker):
     """Return the most recent stored price for a ticker, or None if none exists."""
+    init_db()  # ensure the table exists before querying
     with engine.begin() as conn:
         result = conn.execute(
             text("""
