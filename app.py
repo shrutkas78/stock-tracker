@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from db import engine
+from db import engine, get_latest_price
 from portfolio import compute_watchlist, compute_portfolio
 from config import HOLDINGS, WATCHLIST
 
@@ -10,7 +10,7 @@ st.title("Stock Tracker")
 # --- Combined watchlist + portfolio table ---
 st.header("Watchlist & Portfolio")
 
-rows = compute_watchlist(WATCHLIST, HOLDINGS)
+rows = compute_watchlist(WATCHLIST, HOLDINGS, price_fn=get_latest_price)
 
 table = pd.DataFrame([
     {
@@ -38,7 +38,7 @@ col3.metric(
     delta=f"{(summary['total_gain'] / summary['total_cost'] * 100):.2f}%",
 )
 
-# --- Price history charts (whole watchlist) ---
+# --- Price history: pick one ticker to chart ---
 st.header("Price History")
 
 df = pd.read_sql("SELECT * FROM prices", engine)
@@ -46,10 +46,10 @@ if df.empty:
     st.info("No price history yet. Run `python backfill.py` to load it.")
 else:
     df["ts"] = pd.to_datetime(df["ts"]).dt.date
-    for ticker in WATCHLIST:
-        sub = df[df["ticker"] == ticker]
-        if sub.empty:
-            continue
-        series = sub.groupby("ts")["price"].mean()
-        st.caption(ticker)
+    available = [t for t in WATCHLIST if t in df["ticker"].unique()]
+    if available:
+        choice = st.selectbox("Select a stock", available)
+        series = df[df["ticker"] == choice].groupby("ts")["price"].mean()
         st.line_chart(series)
+    else:
+        st.info("No history for the current watchlist yet.")
