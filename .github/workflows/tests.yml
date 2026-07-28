@@ -2,26 +2,44 @@ name: Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev, qa, staging, main ]
   pull_request:
-    branches: [ main ]
+    branches: [ dev, qa, staging, main ]
 
 jobs:
-  test:
+  fast-tests:
+    # Runs on every branch — quick feedback
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-mock pytest-cov
+      - name: Run fast tests
+        env:
+          APP_ENV: dev
+        run: pytest -v -m "not slow"
 
-      - name: Run tests with coverage
-        run: pytest --cov=. --cov-report=term-missing
+  full-suite:
+    # Only on qa / staging / main — the gate before promotion
+    if: contains(fromJSON('["qa", "staging", "main"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock pytest-cov
+      - name: Run full suite with coverage
+        env:
+          APP_ENV: qa
+        run: pytest -v --cov=fetch --cov=db --cov=portfolio --cov=config --cov-report=term-missing
